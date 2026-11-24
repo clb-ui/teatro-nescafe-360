@@ -1,0 +1,2764 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teatro Nescafé 360° Virtual — Explora tu Mundo</title>
+
+  <!-- Tailwind CSS para utilidades de diseño y maquetación limpia -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js (r128) para el escenario 360° real del Teatro Nescafé -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Fuentes de respaldo web mientras no estén los archivos .ttf locales -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+
+  <style>
+    /* =========================================================================
+       1. TIPOGRAFÍAS OFICIALES DE NESCAFÉ Y BETTER TIMES
+       Coloca estos archivos .ttf sueltos en la misma carpeta que index.html.
+    ========================================================================= */
+    @font-face {
+      font-family: 'Nescafe Sans';
+      src: url('Nescafe Sans Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Nescafe Sans';
+      src: url('Nescafe Sans Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Nescafe Sans';
+      src: url('Nescafe Sans Italic.ttf') format('truetype');
+      font-weight: 400;
+      font-style: italic;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Nescafe Sans';
+      src: url('Nescafe Sans Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Better Times';
+      src: url('Better Times.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* =========================================================================
+       2. PALETA DE MARCA NESCAFÉ TRADICIONAL (#D40000, #FFFFFF, #080808)
+    ========================================================================= */
+    :root {
+      --rojo-nescafe: #D40000;
+      --rojo-boton: #E31818;
+      --rojo-boton-hover: #FF2424;
+      --negro-teatro: #080808;
+      --blanco: #FFFFFF;
+      --dorado-suave: #E6B964;
+      --linea-dorada: #C89B54;
+      --fuente-marca: 'Nescafe Sans', 'Montserrat', sans-serif;
+      --fuente-script: 'Better Times', 'Caveat', cursive;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000;
+      color: var(--blanco);
+      font-family: var(--fuente-marca);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Contenedor maestro en formato 16:9 estándar de Canva sin deformarse */
+    .marco-16-9 {
+      position: relative;
+      width: 100vw;
+      max-width: calc(100vh * 16 / 9);
+      aspect-ratio: 16 / 9;
+      background-color: var(--negro-teatro);
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.95);
+    }
+
+    /* =========================================================================
+       3. PORTADA 100% OPACA + BOTÓN ROJO + LÍNEA DORADA + FRASE DE CAMPAÑA
+    ========================================================================= */
+    #portada {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      background-color: #080706;
+      background-image: radial-gradient(ellipse 52% 62% at 50% 42%, rgba(92, 60, 30, 0.24) 0%, rgba(12, 9, 7, 0.97) 58%, #060504 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+
+    #portada.oculta {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    /* Imagen oficial de portada (se activa automáticamente si existe en tu carpeta) */
+    #portadaImagenOficial {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 2;
+      display: none;
+    }
+
+    /* Respaldo fiel de cortinas rojas laterales para Preview */
+    .portada-cortina {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8%;
+      z-index: 1;
+      pointer-events: none;
+      background: linear-gradient(90deg, #4a0505 0%, #240202 52%, rgba(8, 7, 6, 0) 100%);
+    }
+    .portada-cortina.izq { left: 0; }
+    .portada-cortina.der { right: 0; transform: scaleX(-1); }
+
+    /* Respaldo fiel del marco dorado con "EXPLORA TU MUNDO" */
+    .marco-dorado-fallback {
+      position: relative;
+      z-index: 1;
+      width: 45%;
+      aspect-ratio: 16 / 10.6;
+      margin-bottom: 5.5%;
+      background: #0a0807;
+      border: 7px solid #75461b;
+      box-shadow:
+        inset 0 0 0 2px #e6b36a,
+        inset 0 0 0 5px #3f2209,
+        inset 0 0 0 8px #9b642c,
+        inset 0 0 34px rgba(0, 0, 0, 0.95),
+        0 0 0 2px #c88d42,
+        0 0 0 5px #2d1605,
+        0 26px 65px rgba(0, 0, 0, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .portada-explora {
+      font-family: var(--fuente-script);
+      font-size: clamp(2rem, 5.2vw, 4.9rem);
+      color: #FFFFFF;
+      line-height: 1.02;
+      letter-spacing: 0.02em;
+      transform: rotate(-2deg);
+    }
+
+    .portada-mundo {
+      font-family: var(--fuente-script);
+      font-size: clamp(2.1rem, 5.6vw, 5.3rem);
+      color: var(--rojo-nescafe);
+      line-height: 1.0;
+      letter-spacing: 0.03em;
+      transform: rotate(-2deg);
+    }
+
+    /* Bloque inferior de portada: Botón rojo + línea dorada + frase */
+    .portada-footer-bloque {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(to top, rgba(10, 7, 5, 0.94) 0%, rgba(10, 7, 5, 0.68) 65%, transparent 100%);
+      padding-top: 2.2%;
+      padding-bottom: 1.8%;
+    }
+
+    .btn-entrar-teatro {
+      background-color: var(--rojo-boton);
+      color: #FFFFFF;
+      font-family: var(--fuente-marca);
+      font-weight: 700;
+      font-size: clamp(0.78rem, 1.35vw, 1.15rem);
+      padding: 0.72em 2.2em;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 6px 26px rgba(227, 24, 24, 0.45), 0 0 18px rgba(227, 24, 24, 0.25);
+      transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+      margin-bottom: 1.4%;
+    }
+
+    .btn-entrar-teatro:hover {
+      background-color: var(--rojo-boton-hover);
+      transform: translateY(-2px) scale(1.025);
+      box-shadow: 0 10px 32px rgba(255, 36, 36, 0.58);
+    }
+
+    .linea-dorada-portada {
+      width: 100%;
+      height: 1.5px;
+      background: linear-gradient(90deg, rgba(200,155,84,0.2) 0%, var(--linea-dorada) 20%, var(--linea-dorada) 80%, rgba(200,155,84,0.2) 100%);
+      margin-bottom: 1.1%;
+    }
+
+    .texto-subtitulo-portada {
+      font-family: var(--fuente-marca);
+      font-weight: 300;
+      font-size: clamp(0.72rem, 1.2vw, 1.02rem);
+      color: #E7DCCB;
+      letter-spacing: 0.015em;
+      text-align: center;
+      padding: 0 4%;
+    }
+
+    /* =========================================================================
+       4. CORTINAS ROJAS DE TRANSICIÓN (SE CIERRAN Y SE ABREN AL ENTRAR)
+    ========================================================================= */
+    #telonTransicion {
+      position: absolute;
+      inset: 0;
+      z-index: 120;
+      pointer-events: none;
+      display: flex;
+    }
+
+    .telon-hoja {
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        #190202 0%,
+        #4e0707 16%,
+        #230303 34%,
+        #5e0909 54%,
+        #1e0202 74%,
+        #440606 90%,
+        #130101 100%
+      );
+      box-shadow: inset 0 0 85px rgba(0, 0, 0, 0.88);
+      transition: transform 0.78s cubic-bezier(0.76, 0, 0.24, 1);
+    }
+
+    .telon-hoja.izq { transform: translateX(-102%); }
+    .telon-hoja.der { transform: translateX(102%); }
+
+    #telonTransicion.cerrado .telon-hoja.izq,
+    #telonTransicion.cerrado .telon-hoja.der {
+      transform: translateX(0%);
+    }
+
+    /* =========================================================================
+       5. VISOR 360° REAL + FICHA TÉCNICA FLOTANTE LIMPIA
+    ========================================================================= */
+    #visorContenedor {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Capa de obras sincronizada en 3D (evita que WebGL deje en negro/gris las fotos en file://) */
+    #capaObrasProyectadas {
+      position: absolute;
+      inset: 0;
+      z-index: 12;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .obra-3d-proyectada {
+      position: absolute;
+      transform-origin: center center;
+      will-change: transform, opacity;
+      display: block;
+      pointer-events: none;
+    }
+
+    .obra-3d-proyectada img {
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      display: block;
+    }
+
+    /* Escultura: elimina fondo negro de la imagen */
+    .obra-3d-proyectada.es-escultura {
+      background: transparent !important;
+      mix-blend-mode: lighten;
+    }
+    .obra-3d-proyectada.es-escultura img {
+      background: transparent !important;
+      filter: contrast(1.06) brightness(1.02);
+    }
+
+    /* Maniquí PNG individual 100% sólido con efecto de volumen 3D (pies firmes sobre la base circular) */
+    .obra-3d-proyectada.es-maniqui {
+      background: transparent !important;
+      mix-blend-mode: normal !important;
+      opacity: 1 !important;
+      transform-style: preserve-3d;
+      transform-origin: center bottom;
+    }
+    .obra-3d-proyectada.es-maniqui .sombra-pies-contacto {
+      position: absolute;
+      left: 50%;
+      bottom: 0.5%;
+      width: 58%;
+      height: 5.5%;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 48%, rgba(0, 0, 0, 0) 78%);
+      filter: blur(2px);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .obra-3d-proyectada.es-maniqui .maniqui-profundidad {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: brightness(0.18) contrast(1.2) blur(1.2px);
+      opacity: 0.85;
+      pointer-events: none;
+    }
+    .obra-3d-proyectada.es-maniqui .maniqui-frente {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      filter: contrast(1.07) saturate(1.04) brightness(0.98) drop-shadow(0 18px 22px rgba(0, 0, 0, 0.92));
+      pointer-events: none;
+    }
+
+    /* Cuadro en muro (pintura, foto, maquillaje): marco exacto al tamaño real de la imagen */
+    .obra-3d-proyectada.con-marco {
+      border: 6px solid #181818;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      background: transparent;
+    }
+
+    /* Poesía flotando como hoja de papel sola en el escenario, sin muro ni marco */
+    .obra-3d-proyectada.es-poesia {
+      animation: flotarPapel 3.8s ease-in-out infinite;
+    }
+    .obra-3d-proyectada.es-poesia img {
+      border-radius: 2px;
+      box-shadow: 0 26px 55px rgba(0, 0, 0, 0.92), 0 0 30px rgba(255, 240, 210, 0.08);
+    }
+    @keyframes flotarPapel {
+      0%, 100% { transform: translateY(0px) rotate(-0.8deg); }
+      50% { transform: translateY(-9px) rotate(0.8deg); }
+    }
+
+    #canvas360 {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    #canvas360:active {
+      cursor: grabbing;
+    }
+
+    .header-exhibicion {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 2.2% 3.5% 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .header-exhibicion > * {
+      pointer-events: auto;
+    }
+
+    .link-volver-portada {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.78);
+      font-family: var(--fuente-marca);
+      font-size: clamp(0.66rem, 0.92vw, 0.84rem);
+      padding: 4px 0;
+      margin-top: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.2s ease;
+    }
+
+    .link-volver-portada:hover {
+      color: #FFFFFF;
+    }
+
+    /* Ficha técnica limpia flotando directo sobre el fondo oscuro */
+    .ficha-flotante {
+      position: absolute;
+      top: 19%;
+      left: 3.5%;
+      width: 27%;
+      max-width: 320px;
+      z-index: 25;
+      pointer-events: none;
+      text-shadow: 0 2px 14px rgba(0, 0, 0, 0.92);
+    }
+
+    .ficha-flotante > * {
+      pointer-events: auto;
+    }
+
+    .pill-disciplina {
+      display: inline-block;
+      background-color: var(--rojo-nescafe);
+      color: #FFFFFF;
+      font-size: clamp(0.6rem, 0.8vw, 0.74rem);
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .titulo-obra-script {
+      font-family: var(--fuente-script);
+      font-size: clamp(1.7rem, 3.1vw, 2.75rem);
+      line-height: 1.05;
+      color: #FFFFFF;
+      margin: 0 0 6px 0;
+      font-weight: 400;
+    }
+
+    .autor-obra-dorado {
+      font-family: var(--fuente-marca);
+      font-size: clamp(0.75rem, 1.05vw, 0.95rem);
+      font-weight: 700;
+      color: var(--dorado-suave);
+      margin-bottom: 8px;
+    }
+
+    .descripcion-obra-limpia {
+      font-family: var(--fuente-marca);
+      font-size: clamp(0.68rem, 0.92vw, 0.85rem);
+      line-height: 1.45;
+      color: rgba(255, 255, 255, 0.92);
+      font-weight: 400;
+      margin: 0;
+    }
+
+    /* =========================================================================
+       6. REPRODUCTOR FUNCIONAL DE CANCIONES (VINILO 3D + AUDIO REAL/PREVIEW)
+    ========================================================================= */
+    .reproductor-audio {
+      display: none;
+      margin-top: 14px;
+      background: rgba(12, 12, 12, 0.78);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7);
+    }
+
+    .reproductor-audio.visible {
+      display: block;
+    }
+
+    .btn-play-redondo {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background-color: var(--rojo-nescafe);
+      color: #FFFFFF;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.15s ease, background-color 0.2s ease;
+    }
+
+    .btn-play-redondo:hover {
+      background-color: #ff1e1e;
+      transform: scale(1.06);
+    }
+
+    .barra-progreso-bg {
+      flex: 1;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .barra-progreso-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--rojo-nescafe);
+      border-radius: 999px;
+      transition: width 0.12s linear;
+    }
+
+    .btn-mute {
+      background: transparent;
+      border: none;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .btn-mute:hover {
+      color: #FFFFFF;
+    }
+
+    .eq-barras {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 11px;
+    }
+
+    .eq-barras span {
+      width: 2.5px;
+      height: 3px;
+      background: var(--rojo-nescafe);
+      border-radius: 1px;
+    }
+
+    .eq-barras.animando span {
+      animation: eqAnim 0.52s ease-in-out infinite alternate;
+    }
+    .eq-barras.animando span:nth-child(2) { animation-delay: 0.16s; }
+    .eq-barras.animando span:nth-child(3) { animation-delay: 0.32s; }
+
+    @keyframes eqAnim {
+      from { height: 22%; }
+      to { height: 100%; }
+    }
+
+    /* =========================================================================
+       7. GUÍA 360° + BARRA INFERIOR (CARRUSEL OBRAS + 8 PARTICIPANTES)
+    ========================================================================= */
+    .guia-360 {
+      position: absolute;
+      top: 9%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      background: rgba(10, 10, 10, 0.72);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: clamp(0.6rem, 0.82vw, 0.74rem);
+      color: rgba(255, 255, 255, 0.92);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+
+    .dock-inferior {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 25;
+      background: linear-gradient(to top, rgba(4, 4, 4, 0.96) 52%, rgba(4, 4, 4, 0.72) 84%, transparent 100%);
+      padding: 1.6% 3.5% 1.4%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .dock-inferior > * {
+      pointer-events: auto;
+    }
+
+    .btn-flecha-dock {
+      position: absolute;
+      bottom: 42%;
+      width: clamp(32px, 3vw, 42px);
+      height: clamp(32px, 3vw, 42px);
+      border-radius: 999px;
+      background: rgba(12, 12, 12, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #FFFFFF;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background-color 0.2s, border-color 0.2s, transform 0.15s;
+    }
+
+    .btn-flecha-dock:hover {
+      background-color: var(--rojo-nescafe);
+      border-color: var(--rojo-nescafe);
+      transform: scale(1.06);
+    }
+
+    .btn-flecha-dock.izq { left: 3.5%; }
+    .btn-flecha-dock.der { right: 3.5%; }
+
+    /* Casillas medianas del carrusel de obras */
+    .card-obra {
+      width: clamp(76px, 8.6vw, 112px);
+      height: clamp(46px, 5vw, 64px);
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      background: #141414;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card-obra:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .card-obra.activa {
+      border-color: var(--rojo-nescafe);
+      box-shadow: 0 0 14px rgba(212, 0, 0, 0.68);
+    }
+
+    .card-obra .thumb-contenido {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .card-obra img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Recorte por porcentaje para mostrar maniquís individuales desde imágenes grupales */
+    .card-obra.tiene-crop img {
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+      position: absolute;
+    }
+
+    .card-obra .tag-audio-mini {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(212, 0, 0, 0.9);
+      color: #FFFFFF;
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    /* Avatares circulares de los 8 participantes */
+    .item-participante {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 2px 5px;
+      transition: transform 0.18s ease;
+    }
+
+    .item-participante:hover {
+      transform: translateY(-2px);
+    }
+
+    .avatar-circulo {
+      width: clamp(32px, 3.1vw, 42px);
+      height: clamp(32px, 3.1vw, 42px);
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--fuente-marca);
+      font-weight: 700;
+      font-size: clamp(0.65rem, 0.85vw, 0.78rem);
+      color: #FFFFFF;
+      border: 2px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+
+    .item-participante.activo .avatar-circulo {
+      border-color: #FFFFFF;
+      box-shadow: 0 0 14px rgba(212, 0, 0, 0.85);
+      transform: scale(1.08);
+    }
+
+    .nombre-participante {
+      font-family: var(--fuente-marca);
+      font-size: clamp(0.55rem, 0.72vw, 0.68rem);
+      color: rgba(255, 255, 255, 0.72);
+      white-space: nowrap;
+    }
+
+    .item-participante.activo .nombre-participante {
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="marco-16-9" id="marcoApp">
+
+    <!-- =======================================================================
+         PORTADA 100% OPACA ("EXPLORA TU MUNDO")
+    ======================================================================= -->
+    <section id="portada">
+      <img id="portadaImagenOficial" alt="Explora tu Mundo — Nescafé" />
+
+      <div class="portada-cortina izq"></div>
+      <div class="portada-cortina der"></div>
+
+      <div id="logoPortadaWrap" class="absolute top-[7%] left-[10%] z-10 h-[6.2%] flex items-center">
+        <img id="logoPortada" class="h-full w-auto object-contain" alt="NESCAFÉ" />
+      </div>
+
+      <div id="marcoDoradoFallback" class="marco-dorado-fallback">
+        <div class="portada-explora">EXPLORA TU</div>
+        <div class="portada-mundo">MUNDO</div>
+      </div>
+
+      <div class="portada-footer-bloque">
+        <button id="btnEntrarTeatro" class="btn-entrar-teatro">
+          Entrar al Teatro Nescafé 360°
+        </button>
+        <div class="linea-dorada-portada"></div>
+        <p class="texto-subtitulo-portada">
+          Una muestra abierta de lo que creas, sin miedo a mostrarlo.
+        </p>
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         TELÓN ROJO DE TRANSICIÓN
+    ======================================================================= -->
+    <div id="telonTransicion">
+      <div class="telon-hoja izq"></div>
+      <div class="telon-hoja der"></div>
+    </div>
+
+    <!-- =======================================================================
+         VISOR 360° THREE.JS + FICHA TÉCNICA LIMPIA
+    ======================================================================= -->
+    <div id="visorContenedor">
+      <canvas id="canvas360"></canvas>
+      <div id="capaObrasProyectadas"></div>
+    </div>
+
+    <header class="header-exhibicion">
+      <div class="flex flex-col items-start">
+        <img id="logoHeader" class="h-6 sm:h-7 w-auto object-contain cursor-pointer" alt="NESCAFÉ" title="Volver a la portada" />
+        <button id="btnVolverPortada" class="link-volver-portada">‹ Volver a la portada</button>
+      </div>
+      <div class="text-xs sm:text-sm font-normal tracking-wide text-white/95">
+        Crea tu Mundo
+      </div>
+    </header>
+
+    <div id="guia360" class="guia-360">
+      <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="8" y="3" width="8" height="14" rx="4" />
+        <line x1="12" y1="7" x2="12" y2="10" />
+        <path d="M5 10l-3 2 3 2" />
+        <path d="M19 10l3 2-3 2" />
+      </svg>
+      <span>Haz clic y arrastra el mouse para explorar</span>
+    </div>
+
+    <aside class="ficha-flotante">
+      <div id="fichaDisciplina" class="pill-disciplina"></div>
+      <h1 id="fichaTitulo" class="titulo-obra-script"></h1>
+      <div id="fichaAutor" class="autor-obra-dorado"></div>
+      <p id="fichaDescripcion" class="descripcion-obra-limpia"></p>
+
+      <!-- Reproductor funcional (solo visible en obras de Música / Vinilo) -->
+      <div id="reproductorAudio" class="reproductor-audio">
+        <div class="flex items-center gap-2.5">
+          <button id="btnPlayPause" class="btn-play-redondo" aria-label="Reproducir o pausar">
+            <span id="iconoPlayPause" class="text-xs leading-none">▶</span>
+          </button>
+
+          <div class="flex-1 flex flex-col gap-1">
+            <div class="flex items-center justify-between text-[10px] text-white/80">
+              <span id="tiempoActual">0:00</span>
+              <span id="tiempoTotal">2:30</span>
+            </div>
+            <div id="barraProgresoBg" class="barra-progreso-bg" title="Haz clic para adelantar o retroceder">
+              <div id="barraProgresoFill" class="barra-progreso-fill"></div>
+            </div>
+          </div>
+
+          <button id="btnMute" class="btn-mute" aria-label="Silenciar o activar sonido" title="Silenciar / Activar sonido">
+            <svg id="iconoVolumen" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between mt-2 text-[10px] text-white/75">
+          <div class="flex items-center gap-1.5">
+            <div id="eqBarras" class="eq-barras"><span></span><span></span><span></span></div>
+            <span id="textoEstadoAudio">Clic en el vinilo o ▶ para escuchar</span>
+          </div>
+          <span id="etiquetaFuenteAudio" class="text-[9px] text-white/45"></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Barra inferior: Flechas + Carrusel intermedio de obras + 8 participantes -->
+    <nav class="dock-inferior">
+      <button id="btnPrev" class="btn-flecha-dock izq" aria-label="Obra anterior">‹</button>
+      <button id="btnNext" class="btn-flecha-dock der" aria-label="Obra siguiente">›</button>
+
+      <div class="flex flex-col items-center gap-1.5 w-full max-w-[78%]">
+        <div id="labelObrasUsuario" class="text-[11px] font-normal text-white/85"></div>
+        <div id="filaObras" class="flex items-center justify-center gap-2.5 overflow-x-auto max-w-full py-0.5"></div>
+      </div>
+
+      <div class="flex flex-col items-center gap-1 w-full">
+        <div class="text-[10px] text-white/65 tracking-wide">Participantes</div>
+        <div id="filaParticipantes" class="flex items-center justify-center gap-2 sm:gap-3 flex-wrap"></div>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    /* =========================================================================
+       LISTA ORDENADA DE PARTICIPANTES Y OBRAS (EDITA AQUÍ FÁCILMENTE)
+       =========================================================================
+       Cómo organizar tu carpeta antes de subir a Netlify Drop:
+       - Sueltos junto a index.html:
+           "Explora tu mundo enmarcado.png"
+           "logo nescafé.png" (o "logo-nescafe.png")
+           "Nescafe Sans Light.ttf", "Nescafe Sans Regular.ttf",
+           "Nescafe Sans Italic.ttf", "Nescafe Sans Bold.ttf", "Better Times.ttf"
+       - Dentro de la subcarpeta "img/":
+           maniqui1.png, maniqui2.png, maquillaje1.jpg, escultura1.png,
+           escultura2.png, pintura1.jpg, pintura2.jpg, pintura3.jpg,
+           poesia1.png, fotografía1.jpg, fotografía2.jpg
+           (Si luego recortas PNGs individuales para cada maniquí, cambia "imagen"
+            a "img/maniqui1-a.png" y quita el objeto "crop" de esa obra.)
+       - Dentro de la subcarpeta "audio/":
+           cancion1.mp3, cancion2.mp3
+    ========================================================================= */
+
+    const CONFIG_RUTAS = {
+      logos: ["logonescafe.png", "logo nescafé.png", "logo-nescafe.png"],
+      portada: "Explora tu mundo enmarcado.png"
+    };
+
+    const PARTICIPANTES = [
+      {
+        id: "p1",
+        usuario: "@fran.estilo",
+        iniciales: "FE",
+        colorAvatar: "#C84B11",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Maniquí 1A — Rojo y Tierra",
+            disciplina: "Diseño de Vestuario",
+            montaje: "moda",
+            alturaMetros: 1.75,
+            imagen: "img/maniqui1a.png",
+            estiloFallback: "maniqui1_izq",
+            descripcion: "Conjunto cálido en tonos naranjo y rojo sobre maniquí real. Primera parada de este look."
+          },
+          {
+            titulo: "Maniquí 1B — Denim y Calor",
+            disciplina: "Diseño de Vestuario",
+            montaje: "moda",
+            alturaMetros: 1.75,
+            imagen: "img/maniqui1b.png",
+            estiloFallback: "maniqui1_centro",
+            descripcion: "Mezcla relajada con jeans claros y detalles cálidos, montada aparte para mirarla de cerca."
+          },
+          {
+            titulo: "Maquillaje 1 — Trazos y Dorados",
+            disciplina: "Maquillaje Artístico",
+            montaje: "galeria",
+            imagen: "img/maquillaje1.jpeg",
+            estiloFallback: "maquillaje1",
+            descripcion: "Bocetos de rostro con acuarela, hilo y destellos dorados. Probar ideas sin filtro."
+          }
+        ]
+      },
+      {
+        id: "p2",
+        usuario: "Anónimo",
+        iniciales: "?",
+        colorAvatar: "#333333",
+        anonimo: true,
+        obras: [
+          {
+            titulo: "Escultura 1 — Pausa Blanca",
+            disciplina: "Escultura",
+            montaje: "escultura",
+            imagen: "img/escultura1.png",
+            estiloFallback: "escultura1",
+            descripcion: "Persona contemplativa en pedestal. A veces decir poco es lo que más pesa."
+          }
+        ]
+      },
+      {
+        id: "p3",
+        usuario: "@cami.versos",
+        iniciales: "CV",
+        colorAvatar: "#9E2A2B",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Pintura 2 — Flores al Rostro",
+            disciplina: "Pintura",
+            montaje: "galeria",
+            imagen: "img/pintura2.jpg",
+            estiloFallback: "pintura2",
+            descripcion: "Figura oscura envuelta en flores que florecen entre sombras. Crear es dejar que brote."
+          },
+          {
+            titulo: "Poesía 1 — Quiéreme",
+            disciplina: "Poesía",
+            montaje: "poesia",
+            imagen: "img/poesia1.png",
+            estiloFallback: "poesia1",
+            descripcion: "Versos sobre la rosa, el cielo y las noches compartidas. Letra chica, emoción grande."
+          }
+        ]
+      },
+      {
+        id: "p4",
+        usuario: "@diego.lente",
+        iniciales: "DL",
+        colorAvatar: "#3C7A9E",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Fotografía 2 — Esquina de Noche",
+            disciplina: "Fotografía",
+            montaje: "galeria",
+            imagen: "img/fotografía2.jpg",
+            estiloFallback: "fotografia2",
+            descripcion: "Captura nocturna en la calle con luces cálidas y calma urbana. El barrio de noche."
+          },
+          {
+            titulo: "Fotografía 1 — Luna Entre Ramas",
+            disciplina: "Fotografía",
+            montaje: "galeria",
+            imagen: "img/fotografía1.jpg",
+            estiloFallback: "fotografia1",
+            descripcion: "Luna brillante asomándose entre ramas oscuras. Mirar pa' arriba cuando todo corre."
+          }
+        ]
+      },
+      {
+        id: "p5",
+        usuario: "@valen.barro",
+        iniciales: "VB",
+        colorAvatar: "#2F6F55",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Escultura 2 — Flor Azul",
+            disciplina: "Escultura",
+            montaje: "escultura",
+            imagen: "img/escultura2.png",
+            estiloFallback: "escultura2",
+            descripcion: "Figura blanca sentada coronada con una flor azul sobre pedestal. Calma y carácter."
+          }
+        ]
+      },
+      {
+        id: "p6",
+        usuario: "@sofi.pasarela",
+        iniciales: "SP",
+        colorAvatar: "#7D449A",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Maniquí 2A — Floral y Negro",
+            disciplina: "Diseño de Vestuario",
+            montaje: "moda",
+            alturaMetros: 1.75,
+            imagen: "img/maniqui2a.png",
+            estiloFallback: "maniqui2_izq",
+            descripcion: "Estampado floral oscuro con caída suelta. Uno de los dos looks de esta muestra."
+          },
+          {
+            titulo: "Maniquí 2B — Silueta Central",
+            disciplina: "Diseño de Vestuario",
+            montaje: "moda",
+            alturaMetros: 1.75,
+            imagen: "img/maniqui2b.png",
+            estiloFallback: "maniqui2_centro",
+            descripcion: "Corte negro limpio con accesorio en contraste, exhibido por separado en el escenario."
+          }
+        ]
+      },
+      {
+        id: "p7",
+        usuario: "@tomas.beats",
+        iniciales: "TB",
+        colorAvatar: "#B85D19",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Pintura 3 — Mirada Felina",
+            disciplina: "Pintura",
+            montaje: "galeria",
+            imagen: "img/pintura3.jfif",
+            estiloFallback: "pintura3",
+            descripcion: "Ojo naranjo y verde lleno de detalle. Imposible no quedarse mirando un rato."
+          },
+          {
+            titulo: "Canción 1 — Pulso de Madrugada",
+            disciplina: "Música / Soundtrack",
+            montaje: "musica",
+            imagen: "",
+            audio: "audio/cancion1.mp3",
+            presetSynth: 0,
+            descripcion: "Pista original para acompañar el recorrido. Dale play o haz clic en el vinilo."
+          }
+        ]
+      },
+      {
+        id: "p8",
+        usuario: "@javi.pincel",
+        iniciales: "JP",
+        colorAvatar: "#6B2737",
+        anonimo: false,
+        obras: [
+          {
+            titulo: "Pintura 1 — Tulipán Blanco",
+            disciplina: "Pintura",
+            montaje: "galeria",
+            imagen: "img/pintura1.jpg",
+            estiloFallback: "pintura1",
+            descripcion: "Tulipán blanco sobre fondo suave. Lo simple también tiene fuerza de sobra."
+          },
+          {
+            titulo: "Canción 2 — Eco del Escenario",
+            disciplina: "Música / Soundtrack",
+            montaje: "musica",
+            imagen: "",
+            audio: "audio/cancion2.mp3",
+            presetSynth: 1,
+            descripcion: "Segunda canción de la muestra en formato vinilo. Haz clic para escucharla."
+          }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       LOGO OFICIAL NESCAFÉ (SVG DE RESPALDO FIEL A TU IMAGEN)
+    ========================================================================= */
+    const LOGO_NESCAFE_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 74">
+        <path d="M10 64 V14 H22 L45 48 V14 H216 L208 21 H55 V64 H44 L21 30 V64 Z" fill="#FFFFFF"/>
+        <text x="63" y="64" fill="#FFFFFF" font-family="Montserrat, Arial Black, sans-serif" font-weight="900" font-size="47" letter-spacing="1.8">ESCAFE</text>
+        <path d="M256 6 C265 6 271 8 271 14 C271 23 261 30 249 31 C253 24 255 15 256 6 Z" fill="#D40000"/>
+        <circle cx="282" cy="59" r="4.5" fill="none" stroke="#FFFFFF" stroke-width="1.2"/>
+        <text x="282" y="61.5" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="6" text-anchor="middle">R</text>
+      </svg>
+    `);
+
+    /* =========================================================================
+       RECORTE POR PORCENTAJE (PARA MOSTRAR 2 MANIQUÍS POR SEPARADO)
+       Aplica crop { x, y, w, h } en valores de 0 a 1 sobre la imagen fuente.
+    ========================================================================= */
+    function recortarCanvas(imgFuente, crop) {
+      const c = document.createElement("canvas");
+      const sw = imgFuente.naturalWidth || imgFuente.width;
+      const sh = imgFuente.naturalHeight || imgFuente.height;
+
+      if (!crop) {
+        c.width = sw;
+        c.height = sh;
+        c.getContext("2d").drawImage(imgFuente, 0, 0, sw, sh);
+        return c;
+      }
+
+      const sx = Math.max(0, Math.floor(crop.x * sw));
+      const sy = Math.max(0, Math.floor(crop.y * sh));
+      const cw = Math.max(1, Math.min(sw - sx, Math.floor(crop.w * sw)));
+      const ch = Math.max(1, Math.min(sh - sy, Math.floor(crop.h * sh)));
+
+      c.width = cw;
+      c.height = ch;
+      c.getContext("2d").drawImage(imgFuente, sx, sy, cw, ch, 0, 0, cw, ch);
+      return c;
+    }
+
+    /* =========================================================================
+       RESPALDOS VISUALES PARA PREVIEW (ADAPTADOS A CADA IMAGEN DE TU CAPTURA)
+    ========================================================================= */
+    const cacheFallbacks = {};
+
+    function generarObraFallbackBase(obra) {
+      const clave = obra.estiloFallback || obra.imagen;
+      if (cacheFallbacks[clave]) return cacheFallbacks[clave];
+
+      const c = document.createElement("canvas");
+      const ctx = c.getContext("2d");
+
+      if (clave.startsWith("maniqui1")) {
+        // 3 maniquís (naranjo, mezclilla/naranjo, chaqueta roja) para probar el recorte por separado
+        c.width = 900;
+        c.height = 900;
+        ctx.clearRect(0, 0, 900, 900);
+
+        const posX = [165, 450, 735];
+        const coloresTop = ["#d9531e", "#b83b14", "#d41414"];
+        const coloresAbajo = ["#8f260e", "#6b8299", "#9e2412"];
+
+        posX.forEach((cx, i) => {
+          // Cabeza y cuello maniquí
+          ctx.fillStyle = "#e5dfd5";
+          ctx.beginPath();
+          ctx.ellipse(cx, 125, 28, 38, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillRect(cx - 12, 160, 24, 34);
+
+          // Brazos y piernas
+          ctx.fillStyle = "#d8d1c5";
+          ctx.fillRect(cx - 56, 215, 16, 240);
+          ctx.fillRect(cx + 40, 215, 16, 240);
+          ctx.fillRect(cx - 28, 560, 20, 260);
+          ctx.fillRect(cx + 8, 560, 20, 260);
+
+          // Parte inferior
+          ctx.fillStyle = coloresAbajo[i];
+          ctx.beginPath();
+          ctx.moveTo(cx - 44, 370);
+          ctx.lineTo(cx + 44, 370);
+          ctx.lineTo(cx + 54, 650);
+          ctx.lineTo(cx - 54, 650);
+          ctx.closePath();
+          ctx.fill();
+
+          // Parte superior
+          ctx.fillStyle = coloresTop[i];
+          ctx.beginPath();
+          ctx.moveTo(cx - 52, 192);
+          ctx.lineTo(cx + 52, 192);
+          ctx.lineTo(cx + 46, 385);
+          ctx.lineTo(cx - 46, 385);
+          ctx.closePath();
+          ctx.fill();
+
+          // Calzado
+          ctx.fillStyle = i === 1 ? "#c99b63" : "#d40000";
+          ctx.beginPath();
+          ctx.ellipse(cx - 18, 830, 18, 10, 0, 0, Math.PI * 2);
+          ctx.ellipse(cx + 18, 830, 18, 10, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+      } else if (clave.startsWith("maniqui2")) {
+        // 3 maniquís (vestido floral rojo/negro, vestido negro, vestido floral azul/naranjo)
+        c.width = 900;
+        c.height = 900;
+        ctx.clearRect(0, 0, 900, 900);
+
+        const posX = [165, 450, 735];
+        posX.forEach((cx, i) => {
+          ctx.fillStyle = "#e8e3da";
+          ctx.beginPath();
+          ctx.ellipse(cx, 125, 28, 38, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillRect(cx - 12, 160, 24, 34);
+
+          ctx.fillStyle = "#d9d3c8";
+          ctx.fillRect(cx - 54, 215, 15, 235);
+          ctx.fillRect(cx + 39, 215, 15, 235);
+          ctx.fillRect(cx - 24, 640, 18, 185);
+          ctx.fillRect(cx + 6, 640, 18, 185);
+
+          ctx.fillStyle = i === 1 ? "#141414" : "#1c191c";
+          ctx.beginPath();
+          ctx.moveTo(cx - 46, 195);
+          ctx.lineTo(cx + 46, 195);
+          ctx.lineTo(cx + 68, 690);
+          ctx.lineTo(cx - 68, 690);
+          ctx.closePath();
+          ctx.fill();
+
+          if (i !== 1) {
+            for (let p = 0; p < 18; p++) {
+              ctx.fillStyle = i === 0 ? (p % 2 === 0 ? "#d42020" : "#ff6b35") : (p % 2 === 0 ? "#e06d20" : "#3a6ea5");
+              ctx.beginPath();
+              ctx.arc(cx - 35 + ((p * 29) % 72), 240 + ((p * 47) % 410), 8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          ctx.fillStyle = "#111111";
+          ctx.fillRect(cx - 34, 818, 26, 14);
+          ctx.fillRect(cx + 8, 818, 26, 14);
+        });
+
+      } else if (clave === "escultura1") {
+        // Busto blanco contemplativo sobre fondo transparente
+        c.width = 520;
+        c.height = 620;
+        ctx.clearRect(0, 0, 520, 620);
+
+        const g = ctx.createLinearGradient(150, 90, 380, 560);
+        g.addColorStop(0, "#f7f5f0");
+        g.addColorStop(0.5, "#dcd7ce");
+        g.addColorStop(1, "#7a756d");
+        ctx.fillStyle = g;
+
+        ctx.beginPath();
+        ctx.roundRect(175, 235, 165, 340, 38);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(245, 165, 58, 78, -0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#b5afa5";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(222, 155);
+        ctx.lineTo(256, 150);
+        ctx.stroke();
+
+      } else if (clave === "escultura2") {
+        // Figura blanca sentada con flor azul sobre fondo transparente
+        c.width = 520;
+        c.height = 620;
+        ctx.clearRect(0, 0, 520, 620);
+
+        ctx.fillStyle = "#efeae0";
+        ctx.beginPath();
+        ctx.ellipse(260, 355, 78, 120, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Brazos y piernas apoyadas
+        ctx.beginPath();
+        ctx.ellipse(158, 435, 62, 22, -0.35, 0, Math.PI * 2);
+        ctx.ellipse(362, 435, 62, 22, 0.35, 0, Math.PI * 2);
+        ctx.ellipse(218, 515, 24, 72, 0.2, 0, Math.PI * 2);
+        ctx.ellipse(302, 515, 24, 72, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flor azul en la cabeza
+        for (let i = 0; i < 5; i++) {
+          const ang = (i * Math.PI * 2) / 5 - Math.PI / 2;
+          ctx.fillStyle = i % 2 === 0 ? "#2d6cdf" : "#4385f5";
+          ctx.beginPath();
+          ctx.ellipse(
+            260 + Math.cos(ang) * 44,
+            175 + Math.sin(ang) * 44,
+            34,
+            20,
+            ang,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+        ctx.fillStyle = "#f4c430";
+        ctx.beginPath();
+        ctx.arc(260, 175, 16, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (clave === "pintura3") {
+        // Ojo de gato naranjo/verde
+        c.width = 560;
+        c.height = 760;
+        const pelaje = ctx.createLinearGradient(0, 0, 560, 760);
+        pelaje.addColorStop(0, "#e67e22");
+        pelaje.addColorStop(0.55, "#c95b14");
+        pelaje.addColorStop(1, "#6e2b09");
+        ctx.fillStyle = pelaje;
+        ctx.fillRect(0, 0, 560, 760);
+
+        for (let i = 0; i < 48; i++) {
+          ctx.strokeStyle = i % 2 === 0 ? "rgba(65, 22, 4, 0.32)" : "rgba(255, 185, 95, 0.16)";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(i * 12, 0);
+          ctx.lineTo(i * 12 - 20, 760);
+          ctx.stroke();
+        }
+
+        // Iris verde brillante
+        const iris = ctx.createRadialGradient(280, 380, 14, 280, 380, 125);
+        iris.addColorStop(0, "#b8f241");
+        iris.addColorStop(0.65, "#4da632");
+        iris.addColorStop(1, "#183814");
+        ctx.fillStyle = iris;
+        ctx.beginPath();
+        ctx.ellipse(280, 380, 130, 102, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupila vertical
+        ctx.fillStyle = "#060606";
+        ctx.beginPath();
+        ctx.ellipse(280, 380, 22, 92, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (clave === "fotografia1") {
+        // Luna brillante entre ramas nocturnas
+        c.width = 560;
+        c.height = 760;
+        ctx.fillStyle = "#07090e";
+        ctx.fillRect(0, 0, 560, 760);
+
+        const halo = ctx.createRadialGradient(310, 230, 10, 310, 230, 120);
+        halo.addColorStop(0, "#ffffff");
+        halo.addColorStop(0.25, "rgba(235, 244, 255, 0.55)");
+        halo.addColorStop(1, "rgba(10, 14, 24, 0)");
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(310, 230, 120, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#16191f";
+        ctx.lineWidth = 8;
+        for (let r = 0; r < 14; r++) {
+          ctx.beginPath();
+          ctx.moveTo(220 + (r * 19) % 240, 760);
+          ctx.quadraticCurveTo(260 + ((r * 37) % 180), 460, 310 + ((r - 7) * 28), 235 + (r % 5) * 45);
+          ctx.stroke();
+        }
+
+      } else if (clave === "fotografia2") {
+        // Persona sentada en calle nocturna con luces
+        c.width = 760;
+        c.height = 540;
+        const noche = ctx.createLinearGradient(0, 0, 760, 540);
+        noche.addColorStop(0, "#0c1017");
+        noche.addColorStop(0.6, "#1b2029");
+        noche.addColorStop(1, "#0d0f12");
+        ctx.fillStyle = noche;
+        ctx.fillRect(0, 0, 760, 540);
+
+        // Luces cálidas de fondo
+        const luz = ctx.createRadialGradient(540, 220, 12, 540, 220, 170);
+        luz.addColorStop(0, "#ffd479");
+        luz.addColorStop(1, "rgba(255, 190, 90, 0)");
+        ctx.fillStyle = luz;
+        ctx.fillRect(340, 40, 400, 360);
+
+        // Silueta sentada
+        ctx.fillStyle = "#11141c";
+        ctx.beginPath();
+        ctx.ellipse(270, 245, 34, 40, 0, 0, Math.PI * 2);
+        ctx.roundRect(225, 282, 92, 130, 28);
+        ctx.fill();
+
+      } else if (clave === "pintura1") {
+        // Flor blanca de tulipán
+        c.width = 520;
+        c.height = 820;
+        const fondo = ctx.createLinearGradient(0, 0, 0, 820);
+        fondo.addColorStop(0, "#4c5a63");
+        fondo.addColorStop(0.55, "#7d6b58");
+        fondo.addColorStop(1, "#332c22");
+        ctx.fillStyle = fondo;
+        ctx.fillRect(0, 0, 520, 820);
+
+        // Tallo y hojas
+        ctx.strokeStyle = "#49693b";
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(260, 760);
+        ctx.quadraticCurveTo(245, 500, 260, 310);
+        ctx.stroke();
+
+        // Pétalos de tulipán blanco
+        ctx.fillStyle = "#f7f4ed";
+        ctx.beginPath();
+        ctx.ellipse(260, 235, 68, 102, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else if (clave === "pintura2") {
+        // Figura con flores en el rostro
+        c.width = 540;
+        c.height = 780;
+        ctx.fillStyle = "#171418";
+        ctx.fillRect(0, 0, 540, 780);
+
+        ctx.fillStyle = "#262127";
+        ctx.beginPath();
+        ctx.ellipse(270, 320, 95, 125, 0, 0, Math.PI * 2);
+        ctx.roundRect(165, 430, 210, 310, 40);
+        ctx.fill();
+
+        const tonosFlor = ["#e84a7f", "#f28c4b", "#c93b6b", "#f5b971", "#9e2a5b"];
+        for (let f = 0; f < 16; f++) {
+          ctx.fillStyle = tonosFlor[f % tonosFlor.length];
+          const ang = (f * Math.PI * 2) / 16;
+          ctx.beginPath();
+          ctx.arc(270 + Math.cos(ang) * (35 + (f % 3) * 28), 315 + Math.sin(ang) * (45 + (f % 3) * 26), 24, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+      } else if (clave === "poesia1") {
+        // Poema "Quiéreme" con rosa en papel crema
+        c.width = 620;
+        c.height = 720;
+        ctx.fillStyle = "#efe2c8";
+        ctx.fillRect(0, 0, 620, 720);
+
+        ctx.fillStyle = "#2b3b28";
+        ctx.font = "bold 36px Georgia, serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Quiéreme", 310, 95);
+
+        ctx.font = "19px Georgia, serif";
+        const versos = [
+          "En la rosa está el perfume,",
+          "En el cielo las estrellas,",
+          "Y en mi alma y corazón,",
+          "La esperanza de que me quieras.",
+          "",
+          "En tus ojos veo el brillo",
+          "Que no veo en la luna,",
+          "Por ti velo cada noche,",
+          "Por ti vivo con amargura."
+        ];
+        versos.forEach((v, idx) => {
+          ctx.fillText(v, 310, 165 + idx * 34);
+        });
+
+        // Rosa inferior derecha
+        ctx.fillStyle = "#d9384e";
+        ctx.beginPath();
+        ctx.arc(465, 555, 68, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#f27485";
+        ctx.beginPath();
+        ctx.arc(455, 542, 38, 0, Math.PI * 2);
+        ctx.fill();
+
+      } else {
+        // Etiqueta de vinilo
+        c.width = 512;
+        c.height = 512;
+        const g = ctx.createLinearGradient(0, 0, 512, 512);
+        g.addColorStop(0, "#8c1414");
+        g.addColorStop(1, "#140808");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 26px Montserrat, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(obra.titulo.slice(0, 20), 256, 250);
+      }
+
+      cacheFallbacks[clave] = c;
+      return c;
+    }
+
+    function generarAlternativasRuta(ruta) {
+      if (!ruta) return [];
+      const sinExt = ruta.replace(/\.[^/.]+$/, "");
+      const lista = [ruta];
+      [".png", ".jpg", ".jpeg", ".jfif", ".webp"].forEach((ext) => {
+        const cand = sinExt + ext;
+        if (!lista.includes(cand)) lista.push(cand);
+      });
+      return lista;
+    }
+
+    function cargarTexturaObra3D(obra, callback) {
+      const construirTextura = (fuenteImg) => {
+        const tex = new THREE.Texture(fuenteImg);
+        tex.encoding = THREE.sRGBEncoding;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
+        tex.generateMipmaps = false;
+
+        const sw = fuenteImg.naturalWidth || fuenteImg.width || 1;
+        const sh = fuenteImg.naturalHeight || fuenteImg.height || 1;
+        let ratio = sw / sh;
+
+        if (obra.crop) {
+          tex.offset.set(obra.crop.x, 1 - obra.crop.y - obra.crop.h);
+          tex.repeat.set(obra.crop.w, obra.crop.h);
+          ratio = (sw * obra.crop.w) / (sh * obra.crop.h);
+        }
+
+        tex.needsUpdate = true;
+        callback(tex, ratio);
+      };
+
+      if (!obra.imagen) {
+        construirTextura(generarObraFallbackBase(obra));
+        return;
+      }
+
+      const candidatos = generarAlternativasRuta(obra.imagen);
+      let idx = 0;
+      const probar = () => {
+        if (idx >= candidatos.length) {
+          construirTextura(generarObraFallbackBase(obra));
+          return;
+        }
+        const imgLocal = new Image();
+        imgLocal.onload = () => {
+          construirTextura(imgLocal);
+        };
+        imgLocal.onerror = probar;
+        imgLocal.src = candidatos[idx++];
+      };
+      probar();
+    }
+
+    /* =========================================================================
+       REPRODUCTOR FUNCIONAL DE CANCIONES (MP3/WAV/OGG + RESPALDO WEB AUDIO)
+    ========================================================================= */
+    class MotorAudioTeatro {
+      constructor() {
+        this.audioEl = new Audio();
+        this.audioEl.preload = "metadata";
+        this.modo = "html5";
+        this.reproduciendo = false;
+        this.silenciado = false;
+        this.obraActual = null;
+
+        this.audioCtx = null;
+        this.masterGain = null;
+        this.intervaloNotas = null;
+        this.tiempoSynth = 0;
+        this.duracionSynth = 150;
+        this.pasoAcorde = 0;
+        this.ultimoTick = 0;
+
+        this.audioEl.addEventListener("ended", () => {
+          this.reproduciendo = false;
+          actualizarUIAudio();
+        });
+      }
+
+      cargarObra(obra) {
+        this.detener();
+        this.obraActual = obra;
+        this.tiempoSynth = 0;
+        this.pasoAcorde = 0;
+
+        if (!obra || obra.montaje !== "musica") return;
+
+        this.modo = "html5";
+        this.audioEl.src = obra.audio || "";
+        this.audioEl.muted = this.silenciado;
+        this.audioEl.currentTime = 0;
+
+        this.audioEl.onerror = () => {
+          this.modo = "synth";
+          actualizarUIAudio();
+        };
+      }
+
+      async alternarPlay() {
+        if (!this.obraActual || this.obraActual.montaje !== "musica") return;
+
+        if (this.reproduciendo) {
+          this.pausar();
+          return;
+        }
+
+        if (this.modo === "html5" && this.obraActual.audio) {
+          try {
+            await this.audioEl.play();
+            this.reproduciendo = true;
+            actualizarUIAudio();
+            return;
+          } catch (e) {
+            this.modo = "synth";
+          }
+        }
+
+        this.iniciarSynth();
+      }
+
+      iniciarSynth() {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!this.audioCtx) {
+          this.audioCtx = new AudioCtx();
+          this.masterGain = this.audioCtx.createGain();
+          this.masterGain.gain.value = this.silenciado ? 0 : 0.22;
+          this.masterGain.connect(this.audioCtx.destination);
+        }
+        if (this.audioCtx.state === "suspended") {
+          this.audioCtx.resume();
+        }
+
+        this.reproduciendo = true;
+        this.ultimoTick = performance.now();
+
+        const progresiones = [
+          [[261.63, 329.63, 392.00, 493.88], [220.00, 261.63, 329.63, 392.00], [174.61, 220.00, 261.63, 329.63], [196.00, 246.94, 293.66, 349.23]],
+          [[293.66, 349.23, 440.00, 523.25], [246.94, 293.66, 392.00, 440.00], [220.00, 261.63, 329.63, 392.00], [196.00, 246.94, 329.63, 392.00]]
+        ];
+        const acordes = progresiones[(this.obraActual.presetSynth || 0) % progresiones.length];
+
+        const tocarAcorde = () => {
+          if (!this.reproduciendo || !this.audioCtx) return;
+          const ahora = this.audioCtx.currentTime;
+          const notas = acordes[this.pasoAcorde % acordes.length];
+          this.pasoAcorde++;
+
+          notas.forEach((freq, idx) => {
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            const filtro = this.audioCtx.createBiquadFilter();
+
+            osc.type = idx === 0 ? "triangle" : "sine";
+            osc.frequency.setValueAtTime(freq, ahora + idx * 0.045);
+            filtro.type = "lowpass";
+            filtro.frequency.setValueAtTime(1100, ahora);
+
+            gain.gain.setValueAtTime(0.0001, ahora + idx * 0.045);
+            gain.gain.exponentialRampToValueAtTime(0.18 / notas.length, ahora + idx * 0.045 + 0.14);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ahora + 2.15);
+
+            osc.connect(filtro);
+            filtro.connect(gain);
+            gain.connect(this.masterGain);
+
+            osc.start(ahora + idx * 0.045);
+            osc.stop(ahora + 2.2);
+          });
+        };
+
+        tocarAcorde();
+        clearInterval(this.intervaloNotas);
+        this.intervaloNotas = setInterval(tocarAcorde, 2000);
+        actualizarUIAudio();
+      }
+
+      pausar() {
+        this.reproduciendo = false;
+        this.audioEl.pause();
+        clearInterval(this.intervaloNotas);
+        this.intervaloNotas = null;
+        actualizarUIAudio();
+      }
+
+      detener() {
+        this.pausar();
+        this.audioEl.currentTime = 0;
+        this.tiempoSynth = 0;
+        actualizarUIAudio();
+      }
+
+      alternarMute() {
+        this.silenciado = !this.silenciado;
+        this.audioEl.muted = this.silenciado;
+        if (this.masterGain && this.audioCtx) {
+          this.masterGain.gain.setValueAtTime(this.silenciado ? 0 : 0.22, this.audioCtx.currentTime);
+        }
+        actualizarUIAudio();
+      }
+
+      buscarProgreso(ratio) {
+        const clamped = Math.max(0, Math.min(1, ratio));
+        if (this.modo === "html5" && isFinite(this.audioEl.duration) && this.audioEl.duration > 0) {
+          this.audioEl.currentTime = clamped * this.audioEl.duration;
+        } else {
+          this.tiempoSynth = clamped * this.duracionSynth;
+        }
+        actualizarProgresoUI();
+      }
+
+      obtenerTiempos() {
+        if (this.modo === "html5" && isFinite(this.audioEl.duration) && this.audioEl.duration > 0) {
+          return { actual: this.audioEl.currentTime, total: this.audioEl.duration };
+        }
+        if (this.reproduciendo && this.modo === "synth") {
+          const ahora = performance.now();
+          this.tiempoSynth += (ahora - this.ultimoTick) / 1000;
+          this.ultimoTick = ahora;
+          if (this.tiempoSynth >= this.duracionSynth) {
+            this.tiempoSynth = 0;
+          }
+        }
+        return { actual: this.tiempoSynth, total: this.duracionSynth };
+      }
+    }
+
+    const reproductor = new MotorAudioTeatro();
+
+    function formatearTiempo(seg) {
+      const s = Math.max(0, Math.floor(seg || 0));
+      const min = Math.floor(s / 60);
+      const rest = s % 60;
+      return `${min}:${rest < 10 ? "0" : ""}${rest}`;
+    }
+
+    /* =========================================================================
+       CARGA DE LOGOS Y PORTADA OFICIAL
+    ========================================================================= */
+    function cargarLogo(imgEl) {
+      let idx = 0;
+      const probarSiguiente = () => {
+        if (idx < CONFIG_RUTAS.logos.length) {
+          imgEl.src = CONFIG_RUTAS.logos[idx++];
+        } else {
+          imgEl.onerror = null;
+          imgEl.src = LOGO_NESCAFE_SVG;
+        }
+      };
+      imgEl.onerror = probarSiguiente;
+      probarSiguiente();
+    }
+    cargarLogo(document.getElementById("logoPortada"));
+    cargarLogo(document.getElementById("logoHeader"));
+
+    const imgPortadaOficial = document.getElementById("portadaImagenOficial");
+    const testPortada = new Image();
+    testPortada.onload = () => {
+      imgPortadaOficial.src = CONFIG_RUTAS.portada;
+      imgPortadaOficial.style.display = "block";
+      document.getElementById("marcoDoradoFallback").style.opacity = "0";
+      document.getElementById("logoPortadaWrap").style.opacity = "0";
+    };
+    testPortada.src = CONFIG_RUTAS.portada;
+
+    /* =========================================================================
+       ESCENA 360° THREE.JS (TEATRO NESCAFÉ + LUZ PUNTUAL ESTILO ESCULTURA)
+    ========================================================================= */
+    let scene, camera, renderer, raycaster;
+    let grupoSalaActual = null;
+    let objetosInteractivos = [];
+    let viniloActivoMesh = null;
+
+    let yawActual = 0;
+    let yawObjetivo = 0;
+    let pitchActual = -0.04;
+    let pitchObjetivo = -0.04;
+
+    let arrastrando = false;
+    let mouseDownX = 0;
+    let mouseDownY = 0;
+    let prevX = 0;
+    let prevY = 0;
+    let movioArrastre = false;
+    let guiaOculta = false;
+
+    let indiceParticipante = 0;
+    let indiceObra = 0;
+    let angulosObras = [];
+
+    const visorContenedor = document.getElementById("visorContenedor");
+    const canvas360 = document.getElementById("canvas360");
+    const portada = document.getElementById("portada");
+    const telon = document.getElementById("telonTransicion");
+    const guia360 = document.getElementById("guia360");
+
+    function crearTexturaCortinasTerciopelo() {
+      const c = document.createElement("canvas");
+      c.width = 1024;
+      c.height = 512;
+      const ctx = c.getContext("2d");
+
+      ctx.fillStyle = "#120101";
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      const pliegues = 40;
+      const ancho = c.width / pliegues;
+      for (let i = 0; i < pliegues; i++) {
+        const x = i * ancho;
+        const g = ctx.createLinearGradient(x, 0, x + ancho, 0);
+        g.addColorStop(0.0, "#0b0101");
+        g.addColorStop(0.25, "#380505");
+        g.addColorStop(0.5, "#540808");
+        g.addColorStop(0.75, "#230303");
+        g.addColorStop(1.0, "#0b0101");
+        ctx.fillStyle = g;
+        ctx.fillRect(x, 0, ancho + 1, c.height);
+      }
+
+      const vGrad = ctx.createLinearGradient(0, 0, 0, c.height);
+      vGrad.addColorStop(0, "rgba(0,0,0,0.82)");
+      vGrad.addColorStop(0.25, "rgba(0,0,0,0.06)");
+      vGrad.addColorStop(0.84, "rgba(0,0,0,0.22)");
+      vGrad.addColorStop(1, "rgba(0,0,0,0.92)");
+      ctx.fillStyle = vGrad;
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.repeat.set(3, 1);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    function crearTexturaPisoEscenario() {
+      const c = document.createElement("canvas");
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext("2d");
+
+      ctx.fillStyle = "#141312";
+      ctx.fillRect(0, 0, 512, 512);
+
+      const tablas = 14;
+      const alto = 512 / tablas;
+      for (let i = 0; i < tablas; i++) {
+        const tono = 16 + (i % 3) * 2;
+        ctx.fillStyle = `rgb(${tono}, ${tono - 1}, ${tono - 1})`;
+        ctx.fillRect(0, i * alto, 512, alto - 1.5);
+        ctx.fillStyle = "#090909";
+        ctx.fillRect(0, (i + 1) * alto - 1.5, 512, 1.5);
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(7, 7);
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    function crearTexturaSombraSuelo() {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext("2d");
+      const g = ctx.createRadialGradient(128, 128, 12, 128, 128, 122);
+      g.addColorStop(0, "rgba(0, 0, 0, 0.94)");
+      g.addColorStop(0.55, "rgba(0, 0, 0, 0.48)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, 256, 256);
+      const t = new THREE.CanvasTexture(c);
+      t.needsUpdate = true;
+      return t;
+    }
+
+    function crearTexturaVinilo(canvasEtiqueta) {
+      const c = document.createElement("canvas");
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext("2d");
+
+      ctx.fillStyle = "#0b0b0b";
+      ctx.fillRect(0, 0, 512, 512);
+
+      for (let r = 98; r < 248; r += 3) {
+        ctx.beginPath();
+        ctx.arc(256, 256, r, 0, Math.PI * 2);
+        ctx.strokeStyle = r % 9 === 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(256, 256, 86, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = "#D40000";
+      ctx.fillRect(170, 170, 172, 172);
+      if (canvasEtiqueta) {
+        ctx.drawImage(canvasEtiqueta, 170, 170, 172, 172);
+      } else {
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 20px Montserrat, Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("NESCAFÉ", 256, 224);
+        ctx.font = "11px Montserrat, Arial, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillText("CREA TU MUNDO", 256, 302);
+      }
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(256, 256, 11, 0, Math.PI * 2);
+      ctx.fillStyle = "#070707";
+      ctx.fill();
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.anisotropy = 4;
+      tex.encoding = THREE.sRGBEncoding;
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    function inicializarEscena360() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050505);
+      scene.fog = new THREE.FogExp2(0x050505, 0.048);
+
+      const w = visorContenedor.clientWidth || 1280;
+      const h = visorContenedor.clientHeight || 720;
+
+      camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 60);
+      camera.position.set(0, 1.48, 0);
+
+      renderer = new THREE.WebGLRenderer({ canvas: canvas360, antialias: true });
+      renderer.setSize(w, h, false);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+
+      raycaster = new THREE.Raycaster();
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.14));
+
+      const piso = new THREE.Mesh(
+        new THREE.CircleGeometry(14, 64),
+        new THREE.MeshStandardMaterial({
+          map: crearTexturaPisoEscenario(),
+          roughness: 0.86,
+          metalness: 0.04
+        })
+      );
+      piso.rotation.x = -Math.PI / 2;
+      piso.receiveShadow = true;
+      scene.add(piso);
+
+      const cortinas360 = new THREE.Mesh(
+        new THREE.CylinderGeometry(10.2, 10.2, 7.6, 64, 1, true),
+        new THREE.MeshStandardMaterial({
+          map: crearTexturaCortinasTerciopelo(),
+          roughness: 0.94,
+          metalness: 0.02,
+          side: THREE.BackSide
+        })
+      );
+      cortinas360.position.y = 3.8;
+      scene.add(cortinas360);
+
+      const techo = new THREE.Mesh(
+        new THREE.CircleGeometry(10.5, 48),
+        new THREE.MeshBasicMaterial({ color: 0x050505 })
+      );
+      techo.rotation.x = Math.PI / 2;
+      techo.position.y = 7.2;
+      scene.add(techo);
+
+      window.addEventListener("resize", ajustarTamanoCanvas);
+      if (window.ResizeObserver) {
+        new ResizeObserver(ajustarTamanoCanvas).observe(visorContenedor);
+      }
+    }
+
+    function ajustarTamanoCanvas() {
+      if (!renderer || !camera) return;
+      const w = visorContenedor.clientWidth;
+      const h = visorContenedor.clientHeight;
+      if (!w || !h) return;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h, false);
+    }
+
+    let anclasObras3D = [];
+    const capaObrasProyectadas = document.getElementById("capaObrasProyectadas");
+
+    function crearElementoObraProyectada(obra, idx, itemRef) {
+      const div = document.createElement("div");
+      let claseExtra = "";
+      if (obra.montaje === "galeria") claseExtra = " con-marco";
+      else if (obra.montaje === "poesia") claseExtra = " es-poesia";
+      else if (obra.montaje === "escultura") claseExtra = " es-escultura";
+      else if (obra.montaje === "moda") claseExtra = " es-maniqui";
+
+      div.className = "obra-3d-proyectada" + claseExtra;
+      div.dataset.indiceObra = idx;
+
+      const img = document.createElement("img");
+      img.alt = obra.titulo;
+      if (obra.montaje === "moda") img.className = "maniqui-frente";
+
+      let imgProfundidad = null;
+      if (obra.montaje === "moda") {
+        const sombraPies = document.createElement("div");
+        sombraPies.className = "sombra-pies-contacto";
+        div.appendChild(sombraPies);
+
+        imgProfundidad = document.createElement("img");
+        imgProfundidad.className = "maniqui-profundidad";
+        imgProfundidad.alt = "";
+        div.appendChild(imgProfundidad);
+        itemRef.imgProfundidad = imgProfundidad;
+        itemRef.imgFrente = img;
+      }
+
+      const candidatos = generarAlternativasRuta(obra.imagen);
+      let idxRuta = 0;
+
+      const actualizarProporcion = () => {
+        const nw = img.naturalWidth || 800;
+        const nh = img.naturalHeight || 1000;
+        itemRef.aspectRatio = nw / nh;
+        if (imgProfundidad) {
+          imgProfundidad.src = img.src;
+        }
+      };
+
+      const probarImagen = () => {
+        if (!obra.imagen || idxRuta >= candidatos.length) {
+          img.onerror = null;
+          const fbBase = generarObraFallbackBase(obra);
+          let cropFb = null;
+          if (obra.estiloFallback && obra.estiloFallback.endsWith("_izq")) cropFb = { x: 0.02, y: 0.02, w: 0.34, h: 0.96 };
+          else if (obra.estiloFallback && obra.estiloFallback.endsWith("_centro")) cropFb = { x: 0.33, y: 0.02, w: 0.34, h: 0.96 };
+          img.src = recortarCanvas(fbBase, cropFb).toDataURL("image/png");
+          return;
+        }
+        img.src = candidatos[idxRuta++];
+      };
+
+      img.onload = actualizarProporcion;
+      img.onerror = probarImagen;
+      probarImagen();
+
+      div.appendChild(img);
+      capaObrasProyectadas.appendChild(div);
+      return { div, img };
+    }
+
+    function actualizarObrasProyectadas3D() {
+      if (!camera || !visorContenedor) return;
+      const w = visorContenedor.clientWidth;
+      const h = visorContenedor.clientHeight;
+      if (!w || !h) return;
+
+      const tempVec = new THREE.Vector3();
+      const camDir = new THREE.Vector3();
+      camera.getWorldDirection(camDir);
+      const fovRad = (camera.fov * Math.PI) / 180;
+      const tanHalfFov = Math.tan(fovRad / 2);
+
+      anclasObras3D.forEach((item) => {
+        const { mesh, div, obra } = item;
+        if (!mesh || !div) return;
+
+        mesh.getWorldPosition(tempVec);
+        const toObj = tempVec.clone().sub(camera.position);
+        const dist = toObj.length();
+        const dirToObj = toObj.clone().normalize();
+        const frenteCamara = dirToObj.dot(camDir);
+
+        if (frenteCamara <= 0.18 || dist < 0.4) {
+          div.style.visibility = "hidden";
+          return;
+        }
+        div.style.visibility = "visible";
+
+        const proj = tempVec.clone().project(camera);
+        const sx = (proj.x * 0.5 + 0.5) * w;
+        const sy = (-proj.y * 0.5 + 0.5) * h;
+
+        const ratio = item.aspectRatio || 0.75;
+        let anchoMundo, alturaMundo;
+
+        if (obra.montaje === "moda") {
+          alturaMundo = 3.05;
+          anchoMundo = alturaMundo * ratio;
+        } else if (obra.montaje === "escultura") {
+          alturaMundo = 1.68;
+          anchoMundo = alturaMundo * ratio;
+          if (anchoMundo > 1.60) {
+            anchoMundo = 1.60;
+            alturaMundo = anchoMundo / ratio;
+          }
+        } else if (obra.montaje === "poesia") {
+          alturaMundo = 2.12;
+          anchoMundo = alturaMundo * ratio;
+          if (anchoMundo > 1.98) {
+            anchoMundo = 1.98;
+            alturaMundo = anchoMundo / ratio;
+          }
+        } else {
+          // Galería (pintura, fotografía, maquillaje): gran formato sobre pared más alejada
+          anchoMundo = 2.68;
+          alturaMundo = anchoMundo / ratio;
+          if (alturaMundo > 2.34) {
+            alturaMundo = 2.34;
+            anchoMundo = alturaMundo * ratio;
+          }
+        }
+
+        const escalaPx = h / (2 * dist * tanHalfFov);
+        const anchoPx = Math.max(32, anchoMundo * escalaPx);
+        const alturaPx = Math.max(32, alturaMundo * escalaPx);
+
+        const esActual = item.indiceObra === indiceObra;
+        div.style.opacity = "1";
+        div.style.width = `${anchoPx}px`;
+        div.style.height = `${alturaPx}px`;
+        div.style.zIndex = esActual ? "16" : "13";
+
+        if (obra.montaje === "moda" && item.anclaPies) {
+          // Proyectar el punto exacto donde los pies tocan el centro superior del círculo 3D
+          const piesVec = new THREE.Vector3();
+          item.anclaPies.getWorldPosition(piesVec);
+          const distPies = piesVec.distanceTo(camera.position);
+          const escalaPies = h / (2 * distPies * tanHalfFov);
+          const alturaModaPx = Math.max(32, alturaMundo * escalaPies);
+          const anchoModaPx = Math.max(32, anchoMundo * escalaPies);
+          const projPies = piesVec.clone().project(camera);
+          const sxPies = (projPies.x * 0.5 + 0.5) * w;
+          const syPies = (-projPies.y * 0.5 + 0.5) * h;
+
+          // Pequeño ajuste de apoyo (2.5%) para compensar cualquier borde transparente inferior del PNG
+          const apoyoPx = alturaModaPx * 0.025;
+          div.style.width = `${anchoModaPx}px`;
+          div.style.height = `${alturaModaPx}px`;
+          div.style.left = `${sxPies - anchoModaPx / 2}px`;
+          div.style.top = `${syPies - alturaModaPx + apoyoPx}px`;
+
+          // Perspectiva 3D reactiva al giro de cámara manteniendo los pies fijos en la base
+          const offsetXNorm = Math.max(-1, Math.min(1, projPies.x));
+          const rotY = -offsetXNorm * 22;
+          const rotX = Math.max(-6, Math.min(6, pitchActual * 18));
+          div.style.transform = `perspective(1100px) rotateY(${rotY.toFixed(2)}deg) rotateX(${rotX.toFixed(2)}deg)`;
+
+          if (item.imgProfundidad) {
+            const shiftX = offsetXNorm * 6;
+            item.imgProfundidad.style.transform = `translate3d(${shiftX.toFixed(1)}px, 2px, -10px) scale(1.012)`;
+          }
+          if (item.imgFrente) {
+            const shadowX = (-offsetXNorm * 10).toFixed(1);
+            item.imgFrente.style.filter = `contrast(1.07) saturate(1.04) brightness(0.98) drop-shadow(${shadowX}px 8px 14px rgba(0, 0, 0, 0.88)) drop-shadow(0px -4px 10px rgba(255, 245, 225, 0.12))`;
+          }
+        } else {
+          div.style.left = `${sx - anchoPx / 2}px`;
+          div.style.top = `${sy - alturaPx / 2}px`;
+        }
+      });
+    }
+
+    function construirSalaParticipante() {
+      reproductor.detener();
+
+      if (grupoSalaActual) {
+        scene.remove(grupoSalaActual);
+      }
+
+      grupoSalaActual = new THREE.Group();
+      objetosInteractivos = [];
+      viniloActivoMesh = null;
+      angulosObras = [];
+      anclasObras3D = [];
+      capaObrasProyectadas.innerHTML = "";
+
+      const participante = PARTICIPANTES[indiceParticipante];
+      const total = participante.obras.length;
+      const separacionAngular =
+        total <= 1 ? 0 : (total === 2 ? Math.PI * 0.72 : (Math.PI * 2) / total);
+      const sombraTex = crearTexturaSombraSuelo();
+
+      participante.obras.forEach((obra, idx) => {
+        const angulo = idx * separacionAngular;
+        angulosObras.push(angulo);
+
+        // Las obras con pared (galería) se ubican más atrás para dar profundidad y equilibrio frente a los maniquís
+        const radioEstacion = obra.montaje === "galeria" ? 4.95 : 3.65;
+
+        const estacion = new THREE.Group();
+        estacion.position.set(Math.sin(angulo) * radioEstacion, 0, -Math.cos(angulo) * radioEstacion);
+        estacion.lookAt(0, 0, 0);
+
+        // Foco cenital puntual estilo escultura en todas las estaciones
+        const foco = new THREE.SpotLight(0xfff8ee, 2.85, 13, Math.PI / 7.5, 0.58, 1.35);
+        foco.position.set(0, 5.1, 1.3);
+        foco.target.position.set(0, 1.32, 0);
+        foco.castShadow = true;
+        estacion.add(foco);
+        estacion.add(foco.target);
+
+        const carcasa = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.075, 0.105, 0.17, 16),
+          new THREE.MeshBasicMaterial({ color: 0x161616 })
+        );
+        carcasa.position.set(0, 5.18, 1.3);
+        estacion.add(carcasa);
+
+        const sombraPiso = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.65, 1.65),
+          new THREE.MeshBasicMaterial({ map: sombraTex, transparent: true, depthWrite: false })
+        );
+        sombraPiso.rotation.x = -Math.PI / 2;
+        sombraPiso.position.y = 0.008;
+        estacion.add(sombraPiso);
+
+        if (obra.montaje === "moda") {
+          // Base circular 3D de exhibición para que el maniquí pise con volumen real en el escenario
+          const baseManiqui = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.56, 0.62, 0.12, 48),
+            new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.48, metalness: 0.25 })
+          );
+          baseManiqui.position.set(0, 0.06, 0);
+          baseManiqui.receiveShadow = true;
+          estacion.add(baseManiqui);
+
+          const aroBase = new THREE.Mesh(
+            new THREE.TorusGeometry(0.56, 0.009, 12, 48),
+            new THREE.MeshStandardMaterial({ color: 0x8f6b32, roughness: 0.35, metalness: 0.72 })
+          );
+          aroBase.rotation.x = Math.PI / 2;
+          aroBase.position.set(0, 0.12, 0);
+          estacion.add(aroBase);
+
+          // Sombra de contacto realista proyectada sobre el círculo de la base
+          const sombraSobreBase = new THREE.Mesh(
+            new THREE.CircleGeometry(0.38, 32),
+            new THREE.MeshBasicMaterial({ map: sombraTex, transparent: true, opacity: 0.85, depthWrite: false })
+          );
+          sombraSobreBase.rotation.x = -Math.PI / 2;
+          sombraSobreBase.position.set(0, 0.123, 0.02);
+          estacion.add(sombraSobreBase);
+
+          // Ancla exacta en la superficie superior del círculo (y = 0.12) para que los pies pisen ahí
+          const anclaPies = new THREE.Object3D();
+          anclaPies.position.set(0, 0.12, 0.02);
+          estacion.add(anclaPies);
+
+          const altura = obra.alturaMetros || 1.75;
+          const planoMat = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+          });
+          const maniquiMesh = new THREE.Mesh(new THREE.PlaneGeometry(altura * 0.72, 3.05), planoMat);
+          maniquiMesh.position.set(0, 0.12 + 1.525, 0);
+          maniquiMesh.userData = { indiceObra: idx, tipo: "moda" };
+          estacion.add(maniquiMesh);
+          objetosInteractivos.push(maniquiMesh);
+          const itemRef = { mesh: maniquiMesh, anclaPies, div: null, obra, indiceObra: idx, aspectRatio: 0.42 };
+          const pModa = crearElementoObraProyectada(obra, idx, itemRef);
+          itemRef.div = pModa.div;
+          anclasObras3D.push(itemRef);
+
+        } else if (obra.montaje === "escultura") {
+          const pedestal = new THREE.Mesh(
+            new THREE.BoxGeometry(0.96, 0.92, 0.96),
+            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.65, metalness: 0.08 })
+          );
+          pedestal.position.set(0, 0.46, 0);
+          estacion.add(pedestal);
+
+          const esculturaMat = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+          });
+          const alturaEscultura = 0.96;
+          const esculturaMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.82, alturaEscultura), esculturaMat);
+          esculturaMesh.position.set(0, 0.92 + 1.62 / 2 - 0.05, 0.02);
+          esculturaMesh.userData = { indiceObra: idx, tipo: "escultura" };
+          estacion.add(esculturaMesh);
+          objetosInteractivos.push(esculturaMesh);
+          const itemRef = { mesh: esculturaMesh, div: null, obra, indiceObra: idx, aspectRatio: 0.84 };
+          const pEsc = crearElementoObraProyectada(obra, idx, itemRef);
+          itemRef.div = pEsc.div;
+          anclasObras3D.push(itemRef);
+
+        } else if (obra.montaje === "musica") {
+          const pedestal = new THREE.Mesh(
+            new THREE.BoxGeometry(0.92, 0.86, 0.92),
+            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.65, metalness: 0.08 })
+          );
+          pedestal.position.set(0, 0.43, 0);
+          estacion.add(pedestal);
+
+          const soporte = new THREE.Mesh(
+            new THREE.BoxGeometry(0.16, 0.72, 0.05),
+            new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.55 })
+          );
+          soporte.position.set(0, 1.22, -0.05);
+          estacion.add(soporte);
+
+          const texVinilo = crearTexturaVinilo(null);
+          const viniloMat = new THREE.MeshStandardMaterial({
+            map: texVinilo,
+            emissive: new THREE.Color(0xffffff),
+            emissiveMap: texVinilo,
+            emissiveIntensity: 0.88,
+            roughness: 0.28,
+            metalness: 0.2
+          });
+          const viniloMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.82, 0.028, 64), viniloMat);
+          viniloMesh.rotation.x = Math.PI / 2 - 0.08;
+          viniloMesh.position.set(0, 1.72, 0.04);
+          viniloMesh.userData = { indiceObra: idx, tipo: "musica" };
+          estacion.add(viniloMesh);
+          objetosInteractivos.push(viniloMesh);
+
+          if (obra.imagen) {
+            obtenerCanvasObra(obra, (canvasRecortado) => {
+              const t = crearTexturaVinilo(canvasRecortado);
+              viniloMat.map = t;
+              viniloMat.emissiveMap = t;
+              viniloMat.needsUpdate = true;
+            });
+          }
+
+        } else if (obra.montaje === "poesia") {
+          // Poesía flotando sola como hoja de papel bajo el foco, sin muro ni marco
+          const anclaMat = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+          });
+          const poesiaMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.5), anclaMat);
+          poesiaMesh.position.set(0, 1.66, 0.02);
+          poesiaMesh.userData = { indiceObra: idx, tipo: "poesia" };
+          estacion.add(poesiaMesh);
+          objetosInteractivos.push(poesiaMesh);
+          const itemRef = { mesh: poesiaMesh, div: null, obra, indiceObra: idx, aspectRatio: 0.85 };
+          const pPoesia = crearElementoObraProyectada(obra, idx, itemRef);
+          itemRef.div = pPoesia.div;
+          anclasObras3D.push(itemRef);
+
+        } else {
+          // Muro oscuro de galería (sin marco 3D duplicado detrás para que encaje limpio)
+          const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(3.25, 3.45, 0.12),
+            new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.88, metalness: 0.04 })
+          );
+          panel.position.set(0, 1.725, -0.09);
+          estacion.add(panel);
+
+          const lienzoMat = new THREE.MeshBasicMaterial({
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+          });
+          const lienzoMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 1.54), lienzoMat);
+          lienzoMesh.position.set(0, 1.78, 0.032);
+          lienzoMesh.userData = { indiceObra: idx, tipo: "galeria" };
+          estacion.add(lienzoMesh);
+          objetosInteractivos.push(lienzoMesh);
+          const itemRef = { mesh: lienzoMesh, div: null, obra, indiceObra: idx, aspectRatio: 0.85 };
+          const pGal = crearElementoObraProyectada(obra, idx, itemRef);
+          itemRef.div = pGal.div;
+          anclasObras3D.push(itemRef);
+        }
+
+        grupoSalaActual.add(estacion);
+      });
+
+      scene.add(grupoSalaActual);
+
+      indiceObra = 0;
+      enfocarObra(0, true);
+      renderizarCarruselObras();
+      renderizarBarraParticipantes();
+    }
+
+    function enfocarObra(idx, inmediato = false) {
+      const participante = PARTICIPANTES[indiceParticipante];
+      indiceObra = Math.max(0, Math.min(idx, participante.obras.length - 1));
+      const obra = participante.obras[indiceObra];
+
+      const destino = -angulosObras[indiceObra];
+      if (inmediato) {
+        yawObjetivo = destino;
+        yawActual = destino;
+        pitchObjetivo = -0.04;
+        pitchActual = -0.04;
+      } else {
+        let diff = ((destino - yawActual + Math.PI) % (Math.PI * 2)) - Math.PI;
+        if (diff < -Math.PI) diff += Math.PI * 2;
+        yawObjetivo = yawActual + diff;
+        pitchObjetivo = -0.04;
+      }
+
+      document.getElementById("fichaDisciplina").textContent = obra.disciplina;
+      document.getElementById("fichaTitulo").textContent = obra.titulo;
+      document.getElementById("fichaAutor").textContent = participante.usuario;
+      document.getElementById("fichaDescripcion").textContent = obra.descripcion;
+
+      viniloActivoMesh = objetosInteractivos.find(
+        (m) => m.userData.indiceObra === indiceObra && m.userData.tipo === "musica"
+      ) || null;
+      reproductor.cargarObra(obra);
+      actualizarUIAudio();
+
+      document.querySelectorAll(".card-obra").forEach((c, i) => {
+        c.classList.toggle("activa", i === indiceObra);
+      });
+    }
+
+    /* =========================================================================
+       CONTROLES DE AUDIO
+    ========================================================================= */
+    const reproductorEl = document.getElementById("reproductorAudio");
+    const btnPlayPause = document.getElementById("btnPlayPause");
+    const iconoPlayPause = document.getElementById("iconoPlayPause");
+    const barraProgresoBg = document.getElementById("barraProgresoBg");
+    const barraProgresoFill = document.getElementById("barraProgresoFill");
+    const tiempoActualEl = document.getElementById("tiempoActual");
+    const tiempoTotalEl = document.getElementById("tiempoTotal");
+    const btnMute = document.getElementById("btnMute");
+    const iconoVolumen = document.getElementById("iconoVolumen");
+    const eqBarras = document.getElementById("eqBarras");
+    const textoEstadoAudio = document.getElementById("textoEstadoAudio");
+    const etiquetaFuenteAudio = document.getElementById("etiquetaFuenteAudio");
+
+    function actualizarUIAudio() {
+      const obra = PARTICIPANTES[indiceParticipante].obras[indiceObra];
+      if (!obra || obra.montaje !== "musica") {
+        reproductorEl.classList.remove("visible");
+        return;
+      }
+
+      reproductorEl.classList.add("visible");
+      iconoPlayPause.textContent = reproductor.reproduciendo ? "⏸" : "▶";
+      eqBarras.classList.toggle("animando", reproductor.reproduciendo);
+      textoEstadoAudio.textContent = reproductor.reproduciendo
+        ? "Reproduciendo pista..."
+        : "Clic en el vinilo o ▶ para escuchar";
+      etiquetaFuenteAudio.textContent = reproductor.modo === "synth" ? "Demo Preview" : "Audio HD";
+
+      iconoVolumen.innerHTML = reproductor.silenciado
+        ? `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line>`
+        : `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>`;
+
+      actualizarProgresoUI();
+    }
+
+    function actualizarProgresoUI() {
+      const { actual, total } = reproductor.obtenerTiempos();
+      tiempoActualEl.textContent = formatearTiempo(actual);
+      tiempoTotalEl.textContent = formatearTiempo(total);
+      const pct = total > 0 ? Math.min(100, (actual / total) * 100) : 0;
+      barraProgresoFill.style.width = `${pct}%`;
+    }
+
+    btnPlayPause.addEventListener("click", (e) => {
+      e.stopPropagation();
+      reproductor.alternarPlay();
+    });
+
+    btnMute.addEventListener("click", (e) => {
+      e.stopPropagation();
+      reproductor.alternarMute();
+    });
+
+    barraProgresoBg.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const rect = barraProgresoBg.getBoundingClientRect();
+      const ratio = (e.clientX - rect.left) / rect.width;
+      reproductor.buscarProgreso(ratio);
+    });
+
+    /* =========================================================================
+       CARRUSEL DE OBRAS + BARRA DE 8 PARTICIPANTES
+    ========================================================================= */
+    function aplicarCropMiniatura(img, crop, containerW, containerH) {
+      if (!crop) return;
+      const nw = img.naturalWidth || 900;
+      const nh = img.naturalHeight || 900;
+      const cw = crop.w * nw;
+      const ch = crop.h * nh;
+      const scale = Math.min(containerW / cw, containerH / ch);
+
+      img.style.width = `${nw * scale}px`;
+      img.style.height = `${nh * scale}px`;
+      const dispW = cw * scale;
+      const dispH = ch * scale;
+      const offsetX = (containerW - dispW) / 2;
+      const offsetY = (containerH - dispH) / 2;
+      img.style.left = `${offsetX - crop.x * nw * scale}px`;
+      img.style.top = `${offsetY - crop.y * nh * scale}px`;
+    }
+
+    function renderizarCarruselObras() {
+      const participante = PARTICIPANTES[indiceParticipante];
+      document.getElementById("labelObrasUsuario").textContent =
+        `Obras de ${participante.usuario} (${participante.obras.length})`;
+
+      const filaObras = document.getElementById("filaObras");
+      filaObras.innerHTML = "";
+
+      participante.obras.forEach((obra, idx) => {
+        const card = document.createElement("div");
+        card.className = `card-obra ${idx === indiceObra ? "activa" : ""} ${obra.crop ? "tiene-crop" : ""}`;
+        card.title = `${obra.titulo} — ${obra.disciplina}`;
+
+        const wrap = document.createElement("div");
+        wrap.className = "thumb-contenido";
+
+        if (obra.montaje === "musica") {
+          const viniloThumb = document.createElement("div");
+          viniloThumb.style.cssText = "width:40px;height:40px;border-radius:50%;background:repeating-radial-gradient(circle,#111 0px,#111 2px,#252525 3px);border:1px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;";
+          viniloThumb.innerHTML = '<div style="width:14px;height:14px;border-radius:50%;background:#D40000;border:2px solid #080808;"></div>';
+          wrap.appendChild(viniloThumb);
+        } else {
+          const img = document.createElement("img");
+          img.alt = obra.titulo;
+
+          const candidatos = generarAlternativasRuta(obra.imagen);
+          let idxRuta = 0;
+
+          const probarThumb = () => {
+            if (idxRuta >= candidatos.length) {
+              img.onerror = null;
+              const fbBase = generarObraFallbackBase(obra);
+              let cropFb = obra.crop || null;
+              if (!cropFb && obra.estiloFallback && obra.estiloFallback.endsWith("_izq")) cropFb = { x: 0.02, y: 0.02, w: 0.34, h: 0.96 };
+              else if (!cropFb && obra.estiloFallback && obra.estiloFallback.endsWith("_centro")) cropFb = { x: 0.33, y: 0.02, w: 0.34, h: 0.96 };
+              img.src = recortarCanvas(fbBase, cropFb).toDataURL("image/png");
+              return;
+            }
+            img.src = candidatos[idxRuta++];
+          };
+
+          img.onload = () => {
+            if (obra.crop) {
+              aplicarCropMiniatura(img, obra.crop, card.clientWidth || 96, card.clientHeight || 56);
+            }
+          };
+          img.onerror = probarThumb;
+          probarThumb();
+
+          wrap.appendChild(img);
+        }
+        card.appendChild(wrap);
+
+        if (obra.montaje === "musica") {
+          const tag = document.createElement("span");
+          tag.className = "tag-audio-mini";
+          tag.textContent = "♫";
+          card.appendChild(tag);
+        }
+
+        card.addEventListener("click", () => enfocarObra(idx));
+        filaObras.appendChild(card);
+      });
+    }
+
+    function renderizarBarraParticipantes() {
+      const fila = document.getElementById("filaParticipantes");
+      fila.innerHTML = "";
+
+      PARTICIPANTES.forEach((p, idx) => {
+        const btn = document.createElement("button");
+        btn.className = `item-participante ${idx === indiceParticipante ? "activo" : ""}`;
+        const contenidoAvatar = p.anonimo
+          ? `<svg class="w-4 h-4 text-white/90" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.58 2 4 5.58 4 10v9.5c0 .65.74 1.02 1.26.63L8 18.08l2.74 2.05c.37.28.88.28 1.25 0L14.74 18.08l2.74 2.05c.52.39 1.26.02 1.26-.63V10c0-4.42-3.58-8-8-8zm-2.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`
+          : p.iniciales;
+
+        btn.innerHTML = `
+          <div class="avatar-circulo" style="background-color: ${p.colorAvatar};">${contenidoAvatar}</div>
+          <span class="nombre-participante">${p.usuario}</span>
+        `;
+
+        btn.addEventListener("click", () => {
+          if (idx === indiceParticipante) return;
+          indiceParticipante = idx;
+          construirSalaParticipante();
+        });
+        fila.appendChild(btn);
+      });
+    }
+
+    /* =========================================================================
+       CONTROLES 360° (ARRASTRE LIBRE + CLIC EN VINILO/OBRA + FLECHAS)
+    ========================================================================= */
+    function iniciarArrastre(x, y) {
+      arrastrando = true;
+      movioArrastre = false;
+      mouseDownX = x;
+      mouseDownY = y;
+      prevX = x;
+      prevY = y;
+
+      if (!guiaOculta) {
+        guia360.style.opacity = "0";
+        guiaOculta = true;
+      }
+    }
+
+    function moverArrastre(x, y) {
+      if (!arrastrando) return;
+      const dx = x - prevX;
+      const dy = y - prevY;
+      if (Math.abs(x - mouseDownX) > 6 || Math.abs(y - mouseDownY) > 6) {
+        movioArrastre = true;
+      }
+      prevX = x;
+      prevY = y;
+
+      yawObjetivo += dx * 0.0046;
+      pitchObjetivo = Math.max(-0.28, Math.min(0.28, pitchObjetivo + dy * 0.0026));
+    }
+
+    function terminarArrastre(x, y) {
+      if (!arrastrando) return;
+      arrastrando = false;
+
+      if (!movioArrastre && typeof x === "number") {
+        const rect = canvas360.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((x - rect.left) / rect.width) * 2 - 1,
+          -((y - rect.top) / rect.height) * 2 + 1
+        );
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(objetosInteractivos, false);
+        if (hits.length > 0) {
+          const hit = hits[0].object;
+          const idxHit = hit.userData.indiceObra;
+          if (hit.userData.tipo === "musica" && idxHit === indiceObra) {
+            reproductor.alternarPlay();
+          } else {
+            enfocarObra(idxHit);
+          }
+        }
+      }
+    }
+
+    canvas360.addEventListener("mousedown", (e) => iniciarArrastre(e.clientX, e.clientY));
+    window.addEventListener("mousemove", (e) => moverArrastre(e.clientX, e.clientY));
+    window.addEventListener("mouseup", (e) => terminarArrastre(e.clientX, e.clientY));
+
+    canvas360.addEventListener("touchstart", (e) => {
+      iniciarArrastre(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener("touchmove", (e) => {
+      if (arrastrando) moverArrastre(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener("touchend", () => terminarArrastre());
+
+    document.getElementById("btnPrev").addEventListener("click", () => {
+      const total = PARTICIPANTES[indiceParticipante].obras.length;
+      enfocarObra((indiceObra - 1 + total) % total);
+    });
+
+    document.getElementById("btnNext").addEventListener("click", () => {
+      const total = PARTICIPANTES[indiceParticipante].obras.length;
+      enfocarObra((indiceObra + 1) % total);
+    });
+
+    /* =========================================================================
+       ANIMACIÓN DE CORTINAS ENTRE PORTADA Y EXHIBICIÓN
+    ========================================================================= */
+    function animarCortinas(callbackMitad) {
+      telon.classList.add("cerrado");
+      setTimeout(() => {
+        if (callbackMitad) callbackMitad();
+        setTimeout(() => {
+          telon.classList.remove("cerrado");
+        }, 180);
+      }, 780);
+    }
+
+    document.getElementById("btnEntrarTeatro").addEventListener("click", () => {
+      animarCortinas(() => {
+        portada.classList.add("oculta");
+      });
+    });
+
+    function volverAPortada() {
+      reproductor.detener();
+      animarCortinas(() => {
+        portada.classList.remove("oculta");
+      });
+    }
+
+    document.getElementById("btnVolverPortada").addEventListener("click", volverAPortada);
+    document.getElementById("logoHeader").addEventListener("click", volverAPortada);
+
+    /* =========================================================================
+       BUCLE PRINCIPAL DE RENDERIZADO 360° + GIRO DEL VINILO
+    ========================================================================= */
+    function animar() {
+      requestAnimationFrame(animar);
+
+      yawActual += (yawObjetivo - yawActual) * 0.1;
+      pitchActual += (pitchObjetivo - pitchActual) * 0.1;
+
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = yawActual;
+      camera.rotation.x = pitchActual;
+
+      if (viniloActivoMesh && reproductor.reproduciendo) {
+        viniloActivoMesh.rotation.y += 0.026;
+      }
+
+      if (reproductor.reproduciendo) {
+        actualizarProgresoUI();
+      }
+
+      renderer.render(scene, camera);
+      actualizarObrasProyectadas3D();
+    }
+
+    window.onload = function () {
+      inicializarEscena360();
+      construirSalaParticipante();
+      animar();
+    };
+  </script>
+</body>
+</html>
